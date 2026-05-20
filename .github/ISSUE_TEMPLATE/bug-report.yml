@@ -1,0 +1,115 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. Please fill out all fields to help us investigate quickly.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the system is affected?
+      options:
+        - REST API
+        - WebSocket Gateway
+        - Hardware Abstraction Layer (HAL)
+        - Messaging / Conversations
+        - Sync Engine
+        - WebRTC / Audio
+        - Attachment Pipeline
+        - Authentication / Authorization
+        - Background Jobs (BullMQ)
+        - Database / Migrations
+        - Observability / Metrics
+        - Docker / Infrastructure
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical (system down or data loss)
+        - High (major feature broken)
+        - Medium (minor feature broken, workaround exists)
+        - Low (cosmetic or minor inconvenience)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: |
+        Provide the exact steps to reproduce the behavior.
+      placeholder: |
+        1. Send POST /api/v1/radio/profiles/0/frequency with body { frequencyHz: 14200000 }
+        2. Observe response
+        3. Check radio state with GET /api/v1/radio/status
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened? Include error messages and stack traces.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Fill in the relevant environment details.
+      value: |
+        - Server version:
+        - Node.js version:
+        - OS:
+        - RADIO_DRIVER: (sbitx | simulated)
+        - Docker Compose version:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: |
+        Paste relevant log output (from Pino JSON logs or Docker logs).
+        Redact any credentials or personal information.
+      render: json
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I have included all relevant logs and error messages
+          required: true
+        - label: I have removed any credentials or sensitive information from logs
+          required: true

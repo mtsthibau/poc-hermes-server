@@ -1,0 +1,107 @@
+name: Feature Request
+description: Propose a new feature or improvement
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for your proposal. Before submitting:
+        - Check if an ADR or RFC already covers this area
+        - For significant architectural changes, consider opening an RFC (`docs/governance/RFC-TEMPLATE.md`) instead
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the system does this feature affect?
+      options:
+        - REST API
+        - WebSocket Gateway
+        - Hardware Abstraction Layer (HAL)
+        - Messaging / Conversations
+        - Sync Engine
+        - WebRTC / Audio
+        - Attachment Pipeline
+        - Authentication / Authorization
+        - Background Jobs (BullMQ)
+        - Database / Schema
+        - Observability / Metrics
+        - Docker / Infrastructure
+        - Federation (Phase 4)
+        - New component
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Target Phase
+      description: Which roadmap phase does this align with?
+      options:
+        - Phase 1 — Foundation
+        - Phase 2 — Real-Time
+        - Phase 3 — Messaging & Sync
+        - Phase 4 — Federation
+        - Future / Unplanned
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: |
+        What problem does this feature solve?
+        Describe the situation from a user or operator perspective.
+      placeholder: |
+        "As an operator, I cannot see which frequency another station is currently using without manually requesting a status update. This slows down coordination during emergency operations."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: |
+        Describe your proposed solution. Be as specific as possible.
+        Include API shape, WebSocket events, or database changes if relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches did you consider? Why is your proposal better?
+
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Tradeoffs & Risks
+      description: |
+        What are the costs or risks of implementing this feature?
+        Performance impact? Increased complexity? Security implications?
+
+  - type: dropdown
+    id: breaking
+    attributes:
+      label: Is this a breaking change?
+      options:
+        - "No — backward compatible"
+        - "Yes — API changes"
+        - "Yes — Database schema changes"
+        - "Yes — WebSocket protocol changes"
+        - "Unsure"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and RFCs — this is not a duplicate
+          required: true
+        - label: This feature aligns with the project's architectural principles
+          required: true
+        - label: I am willing to implement this feature (or help with implementation)
