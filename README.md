@@ -132,6 +132,9 @@ This project replaces the legacy PHP/Lumen `hermes-api` and the C-embedded `sbit
 - [ADR Template](docs/governance/ADR-TEMPLATE.md)
 - [RFC Template](docs/governance/RFC-TEMPLATE.md)
 
+### Audits
+- [2026-05-20 — Adversarial Architecture Audit](docs/audit/2026-05-20-architecture-audit.md)
+
 ---
 
 ## Project Structure
@@ -186,7 +189,8 @@ poc-hermes-server/
 │   ├── architecture/
 │   ├── adr/
 │   ├── roadmap/
-│   └── governance/
+│   ├── governance/
+│   └── audit/
 ├── infrastructure/
 │   ├── docker/
 │   ├── scripts/
