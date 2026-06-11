@@ -2,7 +2,7 @@
 
 **Project**: poc-hermes-server  
 **Status**: Architecture Design  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-06-10
 
 ---
 
@@ -15,6 +15,7 @@ A radio communication platform has inherently event-driven behavior:
 - Multiple clients subscribe to real-time updates
 - Background jobs process delivery queues independently
 - Synchronization needs to fan out to multiple subscribers
+- Some consumers require exclusive worker semantics rather than fan-out
 
 A pure request-response architecture cannot serve these requirements without polling, which is wasteful and adds latency. The event-driven approach decouples producers (HAL, messaging service) from consumers (WebSocket gateway, delivery workers, sync engine) without direct dependencies.
 
@@ -22,7 +23,7 @@ A pure request-response architecture cannot serve these requirements without pol
 
 ## 2. Event Bus Design
 
-The internal event bus is implemented using **Redis Pub/Sub**. This choice was made because:
+Phase 1-3 uses **Redis Pub/Sub** for fan-out events and a Redis-backed exclusive-consumer pattern for worker-style subscribers behind the shared `IEventBus` contract. This choice was made because:
 
 - Redis is already in the stack (caching, sessions, BullMQ)
 - Redis Pub/Sub provides immediate fanout to all subscribers
@@ -41,7 +42,14 @@ The internal event bus is implemented using **Redis Pub/Sub**. This choice was m
 ```typescript
 // src/events/EventBus.ts
 
-export class EventBus {
+export interface IEventBus {
+  publish<T>(topic: string, payload: T): Promise<void>
+  subscribe<T>(topic: string, handler: EventHandler<T>): Unsubscribe
+  subscribePattern<T>(pattern: string, handler: EventHandler<T>): Unsubscribe
+  subscribeExclusive<T>(topic: string, group: string, handler: EventHandler<T>): Unsubscribe
+}
+
+export class RedisEventBus implements IEventBus {
   private publisher: Redis
   private subscriber: Redis
 
@@ -69,6 +77,11 @@ export class EventBus {
   subscribePattern<T>(pattern: string, handler: EventHandler<T>): Unsubscribe {
     this.subscriber.psubscribe(pattern)  // Pattern: 'radio.*', 'message.*'
     // ...
+  }
+
+  subscribeExclusive<T>(topic: string, group: string, handler: EventHandler<T>): Unsubscribe {
+    // Redis-backed worker pattern: one group member handles each message
+    // Semantics map directly to NATS JetStream consumer groups in Phase 4.
   }
 }
 
@@ -160,19 +173,18 @@ MessagingService.sendMessage()
   ├─► [PostgreSQL] INSERT INTO messages (status=sending)
   ├─► [PostgreSQL] INSERT INTO message_deliveries (per recipient, per channel)
   ├─► [PostgreSQL] UPDATE messages SET status='sent'
+  ├─► [BullMQ] Enqueue durable delivery jobs / scheduling work from the write path
   │
   └─► EventBus.publish('message.new', { message, conversationId, participants })
         │
         ├─► WebSocket Gateway (subscribed to 'message.*')
         │     └─► Push MESSAGE_NEW frame to all online subscribers of conversation
         │
-        ├─► DeliveryWorker (BullMQ, subscribed to 'message.new')
-        │     └─► Create BullMQ jobs per offline recipient
-        │           ├─► PushNotificationJob (mobile devices)
-        │           └─► RadioDeliveryJob (if target station offline)
+        ├─► Sync fan-out / metrics / observability subscribers
         │
-        └─► SyncWorker (subscribed to 'message.new')
-              └─► Append to sync_queue for offline devices
+        └─► MissedDeliveryRecoveryWorker (scheduled, not event-triggered only)
+              └─► Re-enqueue any `message_deliveries` rows left `pending`
+                  for > 60 seconds
 ```
 
 ### 4.2 Radio Telemetry Flow

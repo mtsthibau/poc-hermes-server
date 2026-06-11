@@ -151,7 +151,6 @@ CREATE TABLE conversations (
     description     TEXT,
     avatar_path     TEXT,
     created_by      UUID NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
-    last_message_id UUID,                          -- FK updated after INSERT (circular, deferred)
     last_activity_at TIMESTAMPTZ,                  -- Denormalized for sort performance
     archived_at     TIMESTAMPTZ,
     metadata        JSONB NOT NULL DEFAULT '{}',   -- e.g., associated frequency, radio profile
@@ -545,6 +544,7 @@ CREATE INDEX idx_sync_cursors_user ON sync_cursors (user_id, device_id);
 -- Outbound delivery queue for offline devices.
 -- Populated when a target device is offline.
 -- Consumed when the device reconnects.
+-- Stores entity references, never serialized payload snapshots.
 -- ─────────────────────────────────────────────────────────────────
 CREATE TABLE sync_queue (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -553,7 +553,6 @@ CREATE TABLE sync_queue (
     entity_type     TEXT NOT NULL,
     entity_id       UUID NOT NULL,
     operation       TEXT NOT NULL CHECK (operation IN ('create', 'update', 'delete')),
-    payload         JSONB NOT NULL,
     priority        SMALLINT NOT NULL DEFAULT 5,   -- 1=highest, 10=lowest
     sequence        BIGINT NOT NULL,               -- Monotonic, per-user ordering
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),

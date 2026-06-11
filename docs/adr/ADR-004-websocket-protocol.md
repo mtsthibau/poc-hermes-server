@@ -30,8 +30,8 @@ A new WebSocket protocol must replace this with a typed, authenticated, subscrip
 
 **Transport**: Native `ws` library (not Socket.IO)  
 **Subprotocol**: `hermes-v1` (negotiated via `Sec-WebSocket-Protocol` header)  
-**Message format**: JSON with typed `WsEnvelope` wrapper  
-**Authentication**: JWT in first message within 10-second window  
+**Message format**: JSON with typed, versioned `WsEnvelope` wrapper  
+**Authentication**: JWT in first message within 10-second window, followed by periodic session re-validation  
 **Model**: Topic-based subscriptions with request-response correlation
 
 ---
@@ -68,6 +68,7 @@ interface WsEnvelope<T = unknown> {
   requestId?: string   // Optional: for request-response correlation
   payload: T           // Type-safe payload
   timestamp: string    // ISO 8601 — for client-side ordering
+  version: number      // Protocol envelope version
 }
 ```
 
@@ -80,6 +81,8 @@ The `type` field enables:
 - Client-side routing to typed handlers
 - Server-side middleware dispatch
 - Protocol evolution (add new types without breaking old clients)
+
+The protocol also includes `SESSION_INVALIDATED` so suspended, revoked, or expired sessions can be terminated during active WebSocket use.
 
 ### Topic-Based Subscriptions
 
@@ -106,6 +109,7 @@ This replaces the current "broadcast everything to everyone" model with targeted
 - Typed event system prevents silent protocol drift
 - Subscription model reduces bandwidth (no unnecessary data)
 - Authentication from first message (no unauthenticated window beyond 10s)
+- Envelope versioning prevents silent protocol drift
 
 ### Negative
 

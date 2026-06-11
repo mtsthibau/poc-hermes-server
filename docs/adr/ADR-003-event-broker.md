@@ -26,7 +26,7 @@ There are multiple options with very different complexity/capability tradeoffs.
 
 **Phase 1-3**: Redis Pub/Sub as the internal event bus  
 **Phase 4**: Migrate to NATS JetStream for durable, federated messaging  
-**Abstraction**: `IEventBus` interface from day one — no transport lock-in
+**Abstraction**: `IEventBus` interface from day one — with explicit fan-out and exclusive-consumer semantics
 
 ---
 
@@ -74,13 +74,14 @@ NATS JetStream provides all of these with lower operational complexity than Kafk
 
 ### The IEventBus Abstraction
 
-The abstraction ensures zero application-layer changes when migrating brokers:
+The abstraction preserves application structure across brokers, but the code must be explicit about fan-out versus exclusive-consumer behavior:
 
 ```typescript
 interface IEventBus {
   publish<T>(topic: string, payload: T): Promise<void>
   subscribe<T>(topic: string, handler: EventHandler<T>): Unsubscribe
   subscribePattern<T>(pattern: string, handler: EventHandler<T>): Unsubscribe
+  subscribeExclusive<T>(topic: string, group: string, handler: EventHandler<T>): Unsubscribe
 }
 
 // Phase 1-3:
@@ -90,7 +91,10 @@ const eventBus: IEventBus = new RedisEventBus(redis)
 const eventBus: IEventBus = new NatsEventBus(natsConnection)
 ```
 
-No publisher or consumer code changes — only the constructor binding changes.
+Publishers stay transport-agnostic, but consumers must choose the correct semantic API:
+
+- `subscribe()` / `subscribePattern()` for fan-out subscribers such as the WebSocket gateway
+- `subscribeExclusive()` for worker-style consumers such as delivery, sync, and telemetry ingest workers
 
 ---
 
@@ -99,7 +103,7 @@ No publisher or consumer code changes — only the constructor binding changes.
 ### Positive
 
 - Zero additional infrastructure in Phase 1-3
-- Clean upgrade path to NATS without application rewrites
+- Clean upgrade path to NATS without changing producer contracts
 - Event handlers are testable in isolation (mock IEventBus)
 - Pattern subscriptions enable efficient filtering
 
@@ -107,6 +111,7 @@ No publisher or consumer code changes — only the constructor binding changes.
 
 - Redis Pub/Sub is at-most-once — if a subscriber is restarted, it misses events published during downtime
 - No event replay — a new subscriber cannot catch up on historical events
+- Redis fan-out and NATS consumer-group behavior are intentionally modeled as different APIs
 
 ### Mitigations
 

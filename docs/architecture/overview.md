@@ -243,11 +243,9 @@ Client (REST POST /api/v1/conversations/:id/messages)
   → Auth middleware verifies JWT, checks RBAC
   → MessageController delegates to MessagingService
   → MessagingService persists message (status: sending)
-  → MessagingService publishes message.new event to EventBus
-  → EventBus fans out:
-      → WebSocket Gateway → pushes MESSAGE_NEW to subscribed recipients
-      → DeliveryWorker (BullMQ) → enqueues delivery jobs per transport
-      → (if offline) → SyncQueue stores for later delivery
+  → MessagingService creates durable delivery records / jobs
+  → MessagingService publishes message.new event to EventBus for realtime fan-out
+  → EventBus fans out to WebSocket Gateway and other non-durable subscribers
   → API returns 201 with message object
 ```
 

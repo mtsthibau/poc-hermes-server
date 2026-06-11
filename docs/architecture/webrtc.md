@@ -2,7 +2,7 @@
 
 **Project**: poc-hermes-server  
 **Status**: Architecture Design  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-06-10
 
 ---
 
@@ -16,6 +16,7 @@ The platform requires real-time audio communication to enable voice conversation
 
 | Use Case | Priority |
 |---|---|
+| Same-station / LAN technical validation call between two browsers | Phase 2 |
 | Browser-to-browser voice call between two operators | Phase 3 |
 | Multiple operators in a group voice channel | Phase 3 |
 | Radio audio streamed to browser (receive) | Phase 3 |
@@ -90,7 +91,7 @@ The platform requires real-time audio communication to enable voice conversation
 ║  ┌────────────────────────────▼───────────────────────────────────────┐   ║
 ║  │                   mediasoup v3 (SFU)                               │   ║
 ║  │                                                                    │   ║
-║  │  Workers (1 per CPU core)                                          │   ║
+║  │  Workers (max(1, min(cpuCount - 2, 4)))                            │   ║
 ║  │  Routers (1 per active session)                                    │   ║
 ║  │  WebRtcTransports (1 per participant, per direction)               │   ║
 ║  │  Producers (audio/video track sources)                             │   ║
@@ -194,7 +195,9 @@ Client A                     Server (SessionManager)           Client B
 // src/webrtc/mediasoup.config.ts
 
 export const mediasoupConfig = {
-  numWorkers: Math.min(os.cpus().length, 4),  // 1 worker per CPU, max 4
+  numWorkers: process.env.MEDIASOUP_WORKER_COUNT
+    ? Number(process.env.MEDIASOUP_WORKER_COUNT)
+    : Math.max(1, Math.min(os.cpus().length - 2, 4)),
 
   workerSettings: {
     logLevel: 'warn' as MediasoupLogLevel,
@@ -278,17 +281,19 @@ fingerprint
 
 ```typescript
 // src/webrtc/credentials.ts
-// Generates short-lived TURN credentials per WebRTC session
+// Generates short-lived TURN credentials for authenticated users
 
-function generateTurnCredentials(sessionId: string): TurnCredentials {
+function generateTurnCredentials(userId: string, sessionId: string): TurnCredentials {
   const ttl = 3600  // 1 hour
-  const username = `${Math.floor(Date.now() / 1000) + ttl}:${sessionId}`
+  const username = `${Math.floor(Date.now() / 1000) + ttl}:${userId}:${sessionId}`
   const password = createHmac('sha1', process.env.TURN_SECRET!)
     .update(username)
     .digest('base64')
   return { username, password, ttl, uris: [...] }
 }
 ```
+
+`GET /api/v1/webrtc/credentials` requires at least the `user` role, must log every issuance to `audit_logs`, and must be rate-limited. `readonly` users may not obtain TURN relay credentials.
 
 ---
 

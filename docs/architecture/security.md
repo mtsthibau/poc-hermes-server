@@ -2,7 +2,7 @@
 
 **Project**: poc-hermes-server  
 **Status**: Architecture Design  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-06-10
 
 ---
 
@@ -67,8 +67,10 @@ POST /api/v1/auth/refresh
   ▼
 1. Look up SHA-256(refreshToken) in user_sessions
 2. Verify session not expired, not revoked
-3. Issue new access token
-4. Optionally rotate refresh token (sliding window)
+3. Revoke the current refresh token handle
+4. Issue a new access token AND a new refresh token
+5. Persist the new refresh token hash in user_sessions
+6. Increment `auth_refresh_token_reuse_detected_total` and alert on token reuse
 ```
 
 ### 2.4 WebSocket Authentication
@@ -81,16 +83,19 @@ Client connects to wss://host/ws
 Client sends: { type: 'AUTHENTICATE', payload: { token: 'eyJ...' } }
   │
   ▼
-1. Verify JWT signature using public key (no DB lookup needed)
+1. Verify JWT signature using public key
 2. Verify expiry, issuer, audience
-3. Mark connection as authenticated, store userId, role, sessionId
-4. Cancel auth timeout
-5. Send: { type: 'AUTHENTICATED', payload: { userId, callsign, role, sessionId } }
+3. Load `user_sessions` by `sessionId` and verify not expired or revoked
+4. Mark connection as authenticated, store userId, role, sessionId
+5. Cancel auth timeout
+6. Send: { type: 'AUTHENTICATED', payload: { userId, callsign, role, sessionId } }
   │
   ▼
 [If auth not received within 10 seconds]
   → Close connection with code 4001 (UNAUTHENTICATED)
 ```
+
+After authentication, the gateway periodically re-validates the backing `user_sessions` row. If the session is revoked, expires, or the user is suspended, the server sends `SESSION_INVALIDATED` and closes the connection.
 
 ---
 
@@ -122,8 +127,11 @@ Client sends: { type: 'AUTHENTICATE', payload: { token: 'eyJ...' } }
 | View system config | ✓ | ✓ | — | — |
 | Modify system config | ✓ | — | — | — |
 | Reboot/shutdown | ✓ | — | — | — |
+| Issue TURN credentials (`GET /api/v1/webrtc/credentials`) | ✓ | ✓ | ✓ | — |
 | Access audit logs | ✓ | — | — | — |
 | Erase SD card | ✓ | — | — | — |
+
+TURN credential issuance must embed the requesting `userId` in the generated username, be written to `audit_logs`, and be rate-limited.
 
 ### RBAC Middleware
 

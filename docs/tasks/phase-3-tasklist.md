@@ -479,7 +479,7 @@ Produce performance baseline report at `docs/qa/performance-phase-3.md`.
 - [ ] `npm run build` passes with zero TypeScript errors
 - [ ] `npm test` passes with ≥ 80% coverage on all new modules
 - [ ] `npm audit --audit-level=high` returns zero findings
-- [ ] Hermes-chat frontend (if available) showing conversations, messages, reactions, threading
+- [ ] Messaging APIs, WebSocket events, and compatibility shims verified against `poc-hermes-app` and representative chat clients
 - [ ] Messages delivered in real-time to online clients via WebSocket
 - [ ] Offline clients receive all missed messages (in current state) on reconnect via sync engine
 - [ ] Attachments uploadable, processed, and downloadable with access control

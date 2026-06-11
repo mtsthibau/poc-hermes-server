@@ -95,13 +95,16 @@ message persisted (created_at = now)
   ▼
 MessagingService.publishMessage()
   │
+  ├─► DeliveryService.createDeliveries(message, conversation.participants)
+  │     └─► Creates message_delivery rows (status=pending) per recipient per channel
+  │
+  ├─► Durable delivery scheduling from the write path
+  │     └─► BullMQ jobs / recovery hooks for offline or delayed delivery
+  │
   ├─► EventBus.publish('message.new', { message, conversation })
   │     │
   │     ├─► WebSocket Gateway → MESSAGE_NEW to online recipients
-  │     └─► Push notification worker (if offline)
-  │
-  ├─► DeliveryService.createDeliveries(message, conversation.participants)
-  │     └─► Creates message_delivery rows (status=pending) per recipient per channel
+  │     └─► Observability / non-durable fan-out subscribers
   │
   └─► message.status = 'sent'
         │
@@ -263,7 +266,7 @@ AttachmentProcessingJob (BullMQ)
 
 ## 9. Conversation Queries
 
-The most performance-critical query is conversation list with unread counts:
+The most performance-critical query is conversation list with unread counts and an indexed on-read lookup of the latest message:
 
 ```sql
 -- Conversations for a user, sorted by activity, with unread counts
@@ -272,8 +275,8 @@ SELECT
   c.type,
   c.title,
   c.last_activity_at,
-  m.content AS last_message_content,
-  m.created_at AS last_message_at,
+  lm.content AS last_message_content,
+  lm.created_at AS last_message_at,
   u.callsign AS last_sender_callsign,
   COUNT(msgs.id) FILTER (
     WHERE msgs.created_at > cp.last_read_at
@@ -282,13 +285,20 @@ SELECT
   ) AS unread_count
 FROM conversation_participants cp
 JOIN conversations c ON c.id = cp.conversation_id
-LEFT JOIN messages m ON m.id = c.last_message_id
-LEFT JOIN users u ON u.id = m.sender_id
+LEFT JOIN LATERAL (
+  SELECT id, sender_id, content, created_at
+  FROM messages
+  WHERE conversation_id = c.id
+    AND deleted_at IS NULL
+  ORDER BY created_at DESC
+  LIMIT 1
+) lm ON TRUE
+LEFT JOIN users u ON u.id = lm.sender_id
 LEFT JOIN messages msgs ON msgs.conversation_id = c.id
 WHERE cp.user_id = :userId
   AND cp.left_at IS NULL
   AND (c.archived_at IS NULL OR :includeArchived = true)
-GROUP BY c.id, cp.last_read_at, m.content, m.created_at, u.callsign
+GROUP BY c.id, cp.last_read_at, lm.content, lm.created_at, u.callsign
 ORDER BY c.last_activity_at DESC NULLS LAST
 LIMIT 50;
 ```

@@ -2,7 +2,7 @@
 
 **Project**: poc-hermes-server  
 **Status**: Architecture Design  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-06-10
 
 ---
 
@@ -56,9 +56,10 @@ A system that assumes persistent connectivity will fail its users in the exact m
 │  │ SyncService                                             │    │
 │  │  1. Validate user/device cursors                        │    │
 │  │  2. Query sync_queue for events since cursor            │    │
-│  │  3. Batch into SYNC_DELTA frames (100 events/batch)     │    │
-│  │  4. Stream frames to client                             │    │
-│  │  5. Send SYNC_COMPLETE with new cursor values           │    │
+│  │  3. Fetch current entity state for each queued ref      │    │
+│  │  4. Batch into SYNC_DELTA frames (100 events/batch)     │    │
+│  │  5. Stream frames to client                             │    │
+│  │  6. Send SYNC_COMPLETE with new cursor values           │    │
 │  └────────────────────────┬──────────────────────────────── ┘    │
 │                           │                                      │
 │  ┌────────────────────────▼──────────────────────────────── ┐    │
@@ -96,7 +97,8 @@ interface SyncCursors {
 **Server-side cursor tracking** (`sync_cursors` table):
 - Server records `last_event_sequence` per user/device/entity_type
 - On sync request, server computes delta: `WHERE sequence > cursor AND target_user_id = userId`
-- Monotonic sequence ensured by PostgreSQL sequence (not timestamp — clocks can skew)
+- Cursor advancement happens on both successful WebSocket push delivery and sync replay completion
+- Monotonic sequence is ensured by PostgreSQL sequence (not timestamp — clocks can skew)
 
 ---
 
@@ -138,16 +140,20 @@ When a message is sent to a recipient who is offline:
   │    [Check Redis: SET hermes:presence:userId with TTL]
   │
   ├─► [ONLINE] → Push MESSAGE_NEW via WebSocket immediately
-  │     └─► Wait for MESSAGE_ACK (30s timeout)
-  │           └─► [No ACK] → Fall through to offline queue
+  │     ├─► [ws.send() error] → Insert sync_queue reference immediately
+  │     └─► [send success] → Wait for MESSAGE_ACK (30s timeout)
+  │           ├─► [ACK received] → mark delivery + advance sync cursor
+  │           └─► [No ACK] → Insert sync_queue reference for that device
   │
   └─► [OFFLINE] → SyncQueueWorker:
         ├─► INSERT INTO sync_queue (target_user_id, entity_type='message',
-        │     entity_id=messageId, operation='create', payload=messageJson)
+        │     entity_id=messageId, operation='create')
         │
         └─► [Optional] Enqueue PushNotificationJob in BullMQ
               └─► Send FCM/APNs push to device
 ```
+
+`message_deliveries` is the durable source of truth. A `MissedDeliveryRecoveryWorker` periodically scans for `status='pending'` rows older than 60 seconds and re-enqueues delivery attempts so a crash between database commit and real-time notification cannot silently lose a delivery.
 
 ---
 
@@ -230,7 +236,7 @@ Presence events are published to `presence.online` / `presence.offline` topics a
 
 - Sync cursors are per-user-device — one device cannot advance another device's cursor
 - Sync delta queries enforce `WHERE target_user_id = authenticatedUserId` — no cross-user leakage
-- The sync_queue payload is validated before insertion to prevent injection
+- `entity_type` and `operation` are validated before insertion; payloads are resolved from current database state at sync time
 - Sync requests are rate-limited: max 10 sync requests per minute per device
 - Large sync payloads (>1000 events) are flagged and reviewed — may indicate sync cursor reset attack
 

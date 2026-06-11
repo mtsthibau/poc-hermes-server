@@ -2,7 +2,7 @@
 
 **Project**: poc-hermes-server  
 **Status**: Architecture Design  
-**Last Updated**: 2026-05-20
+**Last Updated**: 2026-06-10
 
 ---
 
@@ -45,6 +45,7 @@ interface WsEnvelope {
   requestId?: string        // Client-provided correlation ID (echoed in response)
   payload: unknown          // Type-specific payload
   timestamp: string         // ISO 8601 UTC timestamp
+  version: number           // Protocol envelope version
 }
 ```
 
@@ -54,7 +55,8 @@ Example:
   "type": "SUBSCRIBE",
   "requestId": "req-abc-123",
   "payload": { "topics": ["radio.telemetry", "message.new"] },
-  "timestamp": "2026-05-20T14:32:00.000Z"
+  "timestamp": "2026-05-20T14:32:00.000Z",
+  "version": 1
 }
 ```
 
@@ -81,6 +83,7 @@ Example:
 |---|---|
 | `AUTHENTICATED` | Auth successful, session established |
 | `AUTH_ERROR` | Authentication failed |
+| `SESSION_INVALIDATED` | Session revoked, expired, or suspended during re-validation |
 | `SUBSCRIBED` | Subscription confirmation |
 | `UNSUBSCRIBED` | Unsubscription confirmation |
 | `PONG` | Heartbeat response |
@@ -135,9 +138,14 @@ Client                                              Server
   │◄─── MESSAGE_NEW ──────────────────────────────────│
   │◄─── TYPING_START ─────────────────────────────────│
   │                                                   │
-  │  [Heartbeat every 30s]                            │
-  │──── PING ──────────────────────────────────────────│
-  │◄─── PONG ─────────────────────────────────────────│
+  │  [Server heartbeat every 30s]                     │
+  │◄─── PING ─────────────────────────────────────────│
+  │──── PONG ─────────────────────────────────────────│
+  │                                                   │
+  │  [Periodic session re-validation]                │
+  │◄─── SESSION_INVALIDATED ─────────────────────────│
+  │     { reason: "revoked" | "expired" | "suspended" } │
+  │──── WebSocket Close ───────────────────────────────│
   │                                                   │
   │  [Client disconnects or times out]                │
   │──── WebSocket Close ───────────────────────────────│
@@ -195,6 +203,7 @@ interface AuthenticatePayload {
   token: string       // JWT access token
   deviceId?: string   // UUID of user's device (for sync targeting)
   resumeSessionId?: string  // Previous session ID for event replay
+  version: number     // Must be 1 for hermes-v1
 }
 
 // Server → Client (success)

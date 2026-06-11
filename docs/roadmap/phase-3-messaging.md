@@ -227,7 +227,7 @@ By the end of Phase 3:
 
 ## Definition of Done — Phase 3
 
-- [ ] Hermes-chat frontend showing conversations, messages, reactions, threading
+- [ ] Messaging APIs, WebSocket events, and compatibility shims verified against `poc-hermes-app` and representative chat clients
 - [ ] Messages delivered in real-time to online clients via WebSocket
 - [ ] Offline clients receive all missed messages on reconnect via sync engine
 - [ ] Attachments uploadable, processed, and downloadable with access control

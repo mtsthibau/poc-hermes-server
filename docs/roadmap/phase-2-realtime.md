@@ -3,7 +3,7 @@
 **Project**: poc-hermes-server  
 **Phase Duration**: Weeks 7–12  
 **Prerequisites**: Phase 1 complete and deployed  
-**Goal**: WebSocket gateway, event-driven radio telemetry, WebRTC audio, and background job infrastructure
+**Goal**: WebSocket gateway, event-driven radio telemetry, backend WebRTC foundations, and background job infrastructure
 
 ---
 
@@ -15,7 +15,7 @@ By the end of Phase 2:
 2. Radio telemetry streaming in real-time to subscribed clients
 3. Internal Redis Pub/Sub event bus wiring all modules
 4. BullMQ workers for delivery, attachment processing, cleanup
-5. Basic WebRTC audio sessions (same station LAN) via mediasoup
+5. Basic WebRTC audio session backend (same-station / LAN validation) via mediasoup
 6. coturn STUN/TURN deployed alongside the server
 
 Phase 2 does **not** include the full chat-native messaging model or sync engine — those are Phase 3.
@@ -110,17 +110,17 @@ Phase 2 does **not** include the full chat-native messaging model or sync engine
 ### Server Side
 
 - [ ] Install and configure mediasoup v3
-- [ ] Worker pool: `min(os.cpus().length, 4)` workers
+- [ ] Worker pool: `max(1, min(os.cpus().length - 2, 4))` workers or `MEDIASOUP_WORKER_COUNT`
 - [ ] Router per session with Opus codec config (FEC, DTX enabled)
 - [ ] `WebRtcSessionManager`: create/destroy sessions, manage transports
 - [ ] WebRTC signaling via existing WebSocket gateway (`webrtc.*` topics)
 - [ ] Message types: `WEBRTC_CREATE_SESSION`, `WEBRTC_TRANSPORT_CREATED`, `WEBRTC_PRODUCE`, `WEBRTC_CONSUME`, `WEBRTC_END_SESSION`
 
-### Client Side (hermes-chat)
+### Compatibility Verification
 
-- [ ] WebRTC client module using browser WebRTC API
-- [ ] Signal via existing WebSocket connection
-- [ ] Basic audio call UI (call, hangup)
+- [ ] Verify `poc-hermes-app` and representative browser clients can consume the Phase 2 signaling contract
+- [ ] Produce a compatibility checklist for future client-side call UI work
+- [ ] Keep any client code limited to validation/prototype work, not a Phase 2 backend deliverable
 
 ### coturn Deployment
 
@@ -163,7 +163,7 @@ Phase 2 does **not** include the full chat-native messaging model or sync engine
 ## Definition of Done — Phase 2
 
 - [ ] WebSocket clients receive real-time radio telemetry within 1100ms of hardware state change
-- [ ] WebRTC audio calls working between two browser clients on the same LAN
+- [ ] WebRTC backend signaling and TURN credential flow validated with a representative same-station / LAN client
 - [ ] All BullMQ workers running without errors in production Docker Compose
 - [ ] Grafana dashboard showing real-time metrics
 - [ ] `/health/ready` includes WebSocket gateway and worker health

@@ -10,9 +10,11 @@ RFCs are open for **2 weeks** of comment before a decision is made. Significant 
 
 **Status**: [Draft | Open for Comment | Accepted | Rejected | Withdrawn]  
 **Author(s)**: [Name or Team]  
+**Decision Owner(s)**: [Engineering Lead / Platform Owner]  
 **Created**: YYYY-MM-DD  
 **Comment Deadline**: YYYY-MM-DD  
 **Decision Date**: [Date decision was made, once finalized]  
+**Approval Authority**: [Who can accept/reject this RFC]  
 **Related ADR**: [If accepted, which ADR documents the final decision]
 
 ---
@@ -77,6 +79,18 @@ Why is this proposal better than the alternatives?
 How would existing functionality be migrated?
 Is this a breaking change? What is the rollout plan?
 What is the rollback strategy if the change causes problems?
+-->
+
+---
+
+## Decision Record
+
+<!--
+When the RFC is accepted or rejected, record:
+- final decision
+- decision owner / approver
+- rationale for the final call
+- follow-up ADR or implementation ticket
 -->
 
 ---

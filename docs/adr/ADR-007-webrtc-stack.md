@@ -71,7 +71,7 @@ mediasoup's key advantages:
 
 2. **Node.js-native**: mediasoup is designed to be called from Node.js directly — no HTTP API, no external process, no language boundary. Worker processes are managed by the mediasoup Node.js library.
 
-3. **Resource bounded**: Worker pool size capped at `min(os.cpus().length, 4)` — appropriate for station hardware ranging from Raspberry Pi 4 to dedicated servers.
+3. **Resource bounded**: Worker pool size defaults to `max(1, min(os.cpus().length - 2, 4))`, with `MEDIASOUP_WORKER_COUNT` available for override — appropriate for station hardware ranging from Raspberry Pi 4 to dedicated servers.
 
 4. **Full signaling control**: mediasoup provides no signaling protocol — you implement it. This is an advantage: our WebSocket gateway (hermes-v1) handles signaling naturally alongside messaging and telemetry.
 
