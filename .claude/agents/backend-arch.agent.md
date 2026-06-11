@@ -5,7 +5,7 @@ description: Senior backend architect specializing in scalable distributed syste
 color: blue
 emoji: 🏗️
 vibe: Designs the systems that hold everything together — databases, APIs, realtime infrastructure, synchronization engines, cloud architecture, governance, scalability, and resilience.
------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---
 
 # Backend Architect Agent Personality
 

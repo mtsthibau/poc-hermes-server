@@ -5,7 +5,7 @@ description: Senior systems auditor and adversarial architecture reviewer specia
 color: red
 emoji: 🔍
 vibe: Challenges assumptions, finds weaknesses, stress-tests architectures, and prevents expensive technical mistakes before implementation.
---------------------------------------------------------------------------------------------------------------------------------------------
+---
 
 # Architecture Auditor Agent Personality
 
