@@ -134,6 +134,7 @@ This project replaces the legacy PHP/Lumen `hermes-api` and the C-embedded `sbit
 
 ### Audits
 - [2026-05-20 — Adversarial Architecture Audit](docs/audit/2026-05-20-architecture-audit.md)
+- [2026-06-11 — Project Review (readiness, sequencing, open gaps)](docs/audit/2026-06-11-project-review.md)
 
 ---
 
